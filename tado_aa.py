@@ -7,9 +7,23 @@ import sys
 import os
 import time
 import inspect
+import logging
+from logging.handlers import SysLogHandler
 
 from datetime import datetime
 from PyTado.interface import Tado
+
+# Configure logging to send logs to syslog
+syslog_handler = SysLogHandler(address='/dev/log')
+
+# Set up a formatter to include timestamps and log levels
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+syslog_handler.setFormatter(formatter)
+
+# Create a logger and set the level
+logger = logging.getLogger()
+logger.setLevel(logging.ERROR)
+logger.addHandler(syslog_handler)
 
 def main():
 
@@ -23,21 +37,23 @@ def main():
     global logFile
     global maxLines
 
-
     lastMessage = ""
+
+    try:
+        from credentials import username, password
+    except ImportError:
+        logging.error("Error: credentials.py not found. Please ensure the file exists and contains the required credentials:\nusername = \"YOUR_TADO_USERNAME\"\n password = \"YOUR_TADO_PASSWORD\"")
+        sys.exit(1)
 
     #Settings
     #--------------------------------------------------
-    username = "your_tado_username" # tado username
-    password = "your_tado_password" # tado password
-
     checkingInterval = 10.0 # checking interval (in seconds)
     errorRetringInterval = 30.0 # retrying interval (in seconds), in case of an error
-    minTemp = 5 # minimum allowed temperature, applicable only if enableTempLimit is "TRUE"
+    minTemp = 8 # minimum allowed temperature, applicable only if enableTempLimit is "TRUE"
     maxTemp = 25 # maximum allowed temperature, applicable only if enableTempLimit is "TRUE"
     enableTempLimit = True # activate min and max temp limit with "True" or disable it with "False"
-    saveLog = False # enable log saving with "True" or disable it with "False"
-    logFile = "/logfile.log" # log file location (if you are using backslashes please add "r" before quotation mark like so: r"\tado_aa\logfile.log")
+    saveLog = True # enable log saving with "True" or disable it with "False"
+    logFile = "./logfile.log" # log file location (if you are using backslashes please add "r" before quotation mark like so: r"\tado_aa\logfile.log")
     maxLines = 50 # log maximum number of lines
     #--------------------------------------------------
 
@@ -224,8 +240,12 @@ def printm(message):
     if (message != lastMessage):
         sys.stdout.write(datetime.now().strftime('%d-%m-%Y %H:%M:%S') + " # " + message + "\n")
 
-        if (saveLog == True):
+        if (saveLog):
             try:
+                if not os.path.exists(logFile):
+                    with open(logFile, "w") as log:  # create file with "w" if it doesn't exist
+                        log.write("Log file created at: " + datetime.now().strftime('%d-%m-%Y %H:%M:%S') + "\n")
+
                 with open(logFile, "a") as log:
                     log.write(datetime.now().strftime('%d-%m-%Y %H:%M:%S') + " # " + message + "\n")
                     log.close()
