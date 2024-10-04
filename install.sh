@@ -34,7 +34,7 @@ Description=Tado Auto-Assist Service
 After=network.target
 
 [Service]
-WorkingDirectory=/home/lndr/Automation/tado_aa
+WorkingDirectory=$DIR
 ExecStart=/usr/bin/python3 \"$DIR/tado_aa.py\"
 Restart=always
 User=$(logname)
